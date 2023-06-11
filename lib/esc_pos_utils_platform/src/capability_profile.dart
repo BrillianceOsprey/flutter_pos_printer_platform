@@ -25,7 +25,7 @@ class CapabilityProfile {
     return await loadMap(capabilities,name);
   }
   
-  static Future<CapabilityProfile> loadMap(Map capabilities,String name = 'default') async {
+  static Future<CapabilityProfile> loadMap(Map capabilities,String name) async {
 
     var profile = capabilities['profiles'][name];
 
@@ -55,7 +55,7 @@ class CapabilityProfile {
         .id;
   }
 
-  static Future<List<dynamic>> getAvailableProfiles(String capabilityPath = 'packages/flutter_pos_printer_platform/resources/capabilities.json') async {
+  static Future<List<dynamic>> getAvailableProfiles({String capabilityPath = 'packages/flutter_pos_printer_platform/resources/capabilities.json'}) async {
     final content = await rootBundle.loadString(capabilityPath);
     Map capabilities = json.decode(content);
     return await getAvailableMapProfiles(capabilities);
