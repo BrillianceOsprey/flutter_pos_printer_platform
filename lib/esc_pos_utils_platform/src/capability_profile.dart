@@ -22,6 +22,10 @@ class CapabilityProfile {
   static Future<CapabilityProfile> load({String name = 'default', String capabilityPath = 'packages/flutter_pos_printer_platform/resources/capabilities.json'}) async {
     final content = await rootBundle.loadString(capabilityPath);
     Map capabilities = json.decode(content);
+    return loadMap(capabilities,{name:name});
+  }
+  
+  static Future<CapabilityProfile> loadMap(Map capabilities,{String name = 'default'}) async {
 
     var profile = capabilities['profiles'][name];
 
@@ -54,6 +58,10 @@ class CapabilityProfile {
   static Future<List<dynamic>> getAvailableProfiles(String capabilityPath = 'packages/flutter_pos_printer_platform/resources/capabilities.json') async {
     final content = await rootBundle.loadString(capabilityPath);
     Map capabilities = json.decode(content);
+    return getAvailableMapProfiles(capabilities);
+  }
+  
+  static Future<List<dynamic>> getAvailableMapProfiles(Map capabilities) async {
 
     var profiles = capabilities['profiles'];
 
