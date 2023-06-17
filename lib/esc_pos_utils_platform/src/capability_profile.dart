@@ -19,9 +19,13 @@ class CapabilityProfile {
   CapabilityProfile._internal(this.name, this.codePages);
 
   /// Public factory
-  static Future<CapabilityProfile> load({String name = 'default'}) async {
-    final content = await rootBundle.loadString('packages/flutter_pos_printer_platform/resources/capabilities.json');
+  static Future<CapabilityProfile> load({String name = 'default', String capabilityPath = 'packages/flutter_pos_printer_platform/resources/capabilities.json'}) async {
+    final content = await rootBundle.loadString(capabilityPath);
     Map capabilities = json.decode(content);
+    return await loadMap(capabilities,name);
+  }
+  
+  static Future<CapabilityProfile> loadMap(Map capabilities,String name) async {
 
     var profile = capabilities['profiles'][name];
 
@@ -51,9 +55,13 @@ class CapabilityProfile {
         .id;
   }
 
-  static Future<List<dynamic>> getAvailableProfiles() async {
-    final content = await rootBundle.loadString('packages/flutter_pos_printer_platform/resources/capabilities.json');
+  static Future<List<dynamic>> getAvailableProfiles({String capabilityPath = 'packages/flutter_pos_printer_platform/resources/capabilities.json'}) async {
+    final content = await rootBundle.loadString(capabilityPath);
     Map capabilities = json.decode(content);
+    return await getAvailableMapProfiles(capabilities);
+  }
+  
+  static Future<List<dynamic>> getAvailableMapProfiles(Map capabilities) async {
 
     var profiles = capabilities['profiles'];
 
