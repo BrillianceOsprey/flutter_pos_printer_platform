@@ -170,7 +170,9 @@ class _MyAppState extends State<MyApp> {
     List<int> bytes = [];
 
     // Xprinter XP-N160I
-    final profile = await CapabilityProfile.load(name: 'XP-N160I');
+    // final profile = await CapabilityProfile.load(name: 'XP-N160I');
+    // default profile
+    final profile = await CapabilityProfile.load();
 
     // PaperSize.mm80 or PaperSize.mm58
     final generator = Generator(PaperSize.mm58, profile);
@@ -178,14 +180,15 @@ class _MyAppState extends State<MyApp> {
     bytes += generator.text('Test Print', styles: const PosStyles(align: PosAlign.left));
     bytes += generator.text('Product 1');
     bytes += generator.text('Product 2');
+    bytes += generator.text('Comunicación');
 
     // bytes += generator.text('￥1,990', containsChinese: true, styles: const PosStyles(align: PosAlign.left));
     // bytes += generator.emptyLines(1);
 
     // sum width total column must be 12
     bytes += generator.row([
-      PosColumn(width: 8, text: 'Lemon lime export quality per pound x 5 units', styles: const PosStyles(align: PosAlign.left, codeTable: 'CP1252')),
-      PosColumn(width: 4, text: 'USD 2.00', styles: const PosStyles(align: PosAlign.right, codeTable: 'CP1252')),
+      PosColumn(width: 8, text: 'Lemon lime export quality per pound x 5 units', styles: const PosStyles(align: PosAlign.left)),
+      PosColumn(width: 4, text: 'USD 2.00', styles: const PosStyles(align: PosAlign.right)),
     ]);
 
     final ByteData data = await rootBundle.load('assets/ic_launcher.png');
