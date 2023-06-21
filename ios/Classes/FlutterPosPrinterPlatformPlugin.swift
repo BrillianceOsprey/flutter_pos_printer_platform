@@ -2,33 +2,58 @@ import Flutter
 import UIKit
 import CoreBluetooth
 
-public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, CBPeripheralDelegate {
+enum BtStates {
+    static let disconnected = 0
+    static let connecting = 1
+    static let connected = 2
+}
+
+enum ChannelName {
+    static let channel = "flutter_pos_printer_platform/methods"
+    static let event = "flutter_pos_printer_platform/state"
+}
+
+public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, FlutterStreamHandler, CBCentralManagerDelegate, CBPeripheralDelegate {
     
     let channel: FlutterMethodChannel
+    private var eventSink: FlutterEventSink?
     private var centralManager: CBCentralManager!
     private var peripheral: CBPeripheral!
     private var printerCharacteristic: CBCharacteristic!
     private var devices: [CBPeripheral] = [CBPeripheral]()
     
     // we need to init this plugin to get the instance of centralmanager
-    init (_ channel: FlutterMethodChannel) {
+    init (_ channel: FlutterMethodChannel, registrar: FlutterPluginRegistrar) {
         self.channel = channel
         super.init()
         // In Swift, this is done in viewDidLoad()
         centralManager = CBCentralManager(delegate: self, queue: nil, options: [CBCentralManagerOptionShowPowerAlertKey: false])
         
+        let eventChannel = FlutterEventChannel(name: ChannelName.event,
+                                               binaryMessenger: registrar.messenger())
+        eventChannel.setStreamHandler(self)
         
+        // controller = UIApplication.shared.keyWindow?.rootViewController as? FlutterViewController
+        //        else {
+        //            fatalError("rootViewController is not type FlutterViewController")
+        //        }
     }
     
     public static func register(with registrar: FlutterPluginRegistrar) {
-        let channel = FlutterMethodChannel(name: "flutter_pos_printer_platform/methods", binaryMessenger: registrar.messenger())
-        let instance = FlutterPosPrinterPlatformPlugin(channel)
+        let channel = FlutterMethodChannel(name: ChannelName.channel, binaryMessenger: registrar.messenger())
+        let instance = FlutterPosPrinterPlatformPlugin(channel, registrar: registrar)
         
         registrar.addMethodCallDelegate(instance, channel: channel)
-        
-        //      guard let controller = UIApplication.shared.keyWindow?.rootViewController as? FlutterViewController else {
-        //            fatalError("rootViewController is not type FlutterViewController")
-        //          }
+    }
+    
+    public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
+        self.eventSink = events
+        return nil
+    }
+    
+    public func onCancel(withArguments arguments: Any?) -> FlutterError? {
+        eventSink = nil
+        return nil
     }
     
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -36,24 +61,44 @@ public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, CBCentral
         case "getBluetoothState":
             getBluetoothState(result: result)
         case "startScan":
-            print("Scanning...")
-            centralManager?.scanForPeripherals(withServices: nil, options: nil)
-            result(nil)
+            if(self.centralManager.state == .poweredOn) {
+                print("Scanning...")
+                devices.removeAll()
+                centralManager?.scanForPeripherals(withServices: nil, options: nil)
+                result(nil)
+            } else {
+                createDialog(message: "Please turn the Bluetooth on")
+                result(false);
+            }
         case "stopScan":
-            print("Stop scan")
-            centralManager?.stopScan()
+            if(self.centralManager.state == .poweredOn) {
+                print("Stop scan")
+                centralManager?.stopScan()
+            }
             result(nil)
         case "connect":
-            print("Stop scan")
-            if let args = call.arguments as? Dictionary<String, Any>,
-               let name = args["name"] as? String {
-                let address = args["address"] as? String
-                // please check the "as" above  - wasn't able to test
-                // handle the method
-                connectDevice(name: name, address: address!, result: result)
-                
+            if(self.centralManager.state == .poweredOn) {
+                if let args = call.arguments as? Dictionary<String, Any>,
+                   let name = args["name"] as? String {
+                    let address = args["address"] as? String
+                    // please check the "as" above  - wasn't able to test
+                    // handle the method
+                    connectDevice(name: name, address: address!, result: result)
+                    
+                } else {
+                    result(FlutterError.init(code: "errorSetDebug", message: "data or format error", details: nil))
+                }
             } else {
-                result(FlutterError.init(code: "errorSetDebug", message: "data or format error", details: nil))
+                createDialog(message: "Please turn the Bluetooth on")
+                result(false);
+            }
+        case "disconnect":
+            if (self.peripheral == nil) {
+                result(false)
+            }
+            else {
+                centralManager?.cancelPeripheralConnection(self.peripheral)
+                result(true)
             }
         case "writeData":
             if let args = call.arguments as? Dictionary<String, Any>,
@@ -72,6 +117,14 @@ public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, CBCentral
         }
     }
     
+    func createDialog(message: String){
+        DispatchQueue.main.async {
+            let alert = UIAlertController(title: "Bluetooth Settings", message: message, preferredStyle: .alert);
+            alert.addAction(UIAlertAction(title: "OK", style: UIAlertAction.Style.default, handler: nil))
+            UIApplication.shared.keyWindow?.rootViewController?.present(alert, animated: true, completion: nil);
+        }
+    }
+    
     func connectDevice(name: String, address: String, result: FlutterResult){
         
         //stopScan
@@ -82,9 +135,13 @@ public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, CBCentral
         {
             decodePeripheralState(peripheralState: peripheral.state)
             if (peripheral.state != .connected){
+                // connecting ...
+                // sendStateEvent(state: BtStates.connecting)
                 //connect
                 centralManager.connect(peripheral, options: nil)
                 self.peripheral = peripheral
+            }else if (peripheral.state == .connected){
+                sendStateEvent(state: BtStates.connected)
             }
             result(true)
         }else{
@@ -95,9 +152,9 @@ public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, CBCentral
     
     private func getBluetoothState(result: FlutterResult) {
         if(self.centralManager.state == .poweredOn) {
-            result("Yes");
+            result(true);
         } else {
-            result("No");
+            result(false);
         }
     }
     
@@ -106,8 +163,15 @@ public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, CBCentral
         // Nil it’s going to discover all services
         peripheral.discoverServices(nil)
         peripheral.delegate = self
+        print(" ==== Connected ==== ")
         
     }
+    
+    public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
+        sendStateEvent(state: BtStates.disconnected)
+        print(" ==== Disconnected ==== ")
+    }
+    
     
     public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
         guard peripheral.name != nil else {return}
@@ -121,17 +185,17 @@ public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, CBCentral
             devices.append(peripheral)
             self.channel.invokeMethod("ScanResult", arguments: deviceMap)
         }
-        //        if peripheral.name! == "MTP-2"
     }
     
     public func centralManagerDidUpdateState(_ central: CBCentralManager) {
         switch central.state {
         case .poweredOn:
             
-            print("BT on")
+            print(" ==== BT ON ==== ")
             break
         case .poweredOff:
-            print("BT OFF")
+            print(" ==== BT OFF ==== ")
+            sendStateEvent(state: BtStates.disconnected)
             // Alert user to turn on Bluetooth
             break
         case .resetting:
@@ -139,11 +203,11 @@ public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, CBCentral
             // Wait for next state update and consider logging interruption of Bluetooth service
             break
         case .unauthorized:
-            
+            createDialog(message: "Enable Bluetooth permission in app Settings")
             // Alert user to enable Bluetooth permission in app Settings
             break
         case .unsupported:
-            
+            createDialog(message: "This device does not support Bluetooth")
             // Alert user their device does not support Bluetooth and app will not work as expected
             break
         case .unknown:
@@ -159,9 +223,9 @@ public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, CBCentral
         
         switch event {
         case .peerConnected:
-            print("connected")
+            sendStateEvent(state: BtStates.connected)
         case .peerDisconnected:
-            print("disconnected")
+            sendStateEvent(state: BtStates.disconnected)
         default:
             break
         }
@@ -169,6 +233,7 @@ public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, CBCentral
     
     public func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
         print("peripheral: %@ failed to connect", peripheral)
+        sendStateEvent(state: BtStates.disconnected)
     }
     
     
@@ -187,14 +252,15 @@ public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, CBCentral
     
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         if (service.uuid.uuidString == "18F0" || service.uuid.uuidString == "18F1"){
-            print("\n -------- SERVICE: " + service.description)
+            //            print("\n -------- SERVICE: " + service.description)
             
             if let charac = service.characteristics {
                 for characteristic in charac {
                     
                     if characteristic.uuid.uuidString == "2AF1" {
-                        print("characteristic: " + characteristic.description )
+                        //                        print("characteristic: " + characteristic.description )
                         self.printerCharacteristic = characteristic
+                        sendStateEvent(state: BtStates.connected)
                     }
                 }
             }
@@ -219,9 +285,6 @@ public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, CBCentral
         
     } // END func decodePeripheralState(peripheralState
     
-    fileprivate var ledMask: UInt8    = 0
-    fileprivate let digitalBits       = 2
-    
     func printTestData(characteristic: CBCharacteristic) {
         if let descriptors = characteristic.descriptors {
             for descriptor in descriptors {
@@ -229,7 +292,7 @@ public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, CBCentral
             }
         }
         
-        let dataToSend = "Print Success!" + characteristic.uuid.uuidString
+        let dataToSend = "Print Success!: " + characteristic.uuid.uuidString
         let buf: [UInt8] = Array(dataToSend.utf8)
         let data = Data(buf)
         
@@ -242,8 +305,19 @@ public class FlutterPosPrinterPlatformPlugin: NSObject, FlutterPlugin, CBCentral
     }
     
     private func sendData(bytes: [UInt8]){
+        if (self.centralManager.state != .poweredOn) { return }
         self.peripheral?.writeValue(Data([0x1B, 0x40]), for: self.printerCharacteristic , type: .withResponse) // clear
         self.peripheral?.writeValue(Data(bytes), for: self.printerCharacteristic , type: .withResponse)
     }
     
+    
+    private func sendStateEvent(state :Int) {
+        guard let eventSink = self.eventSink else {
+            return
+        }
+        eventSink(state)
+        // eventSink(FlutterError(code: "unavailable",
+        //  message: "Charging status unavailable",
+        //  details: nil))
+    }
 }
