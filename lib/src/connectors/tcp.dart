@@ -84,14 +84,15 @@ class TcpPrinterConnector implements PrinterConnector<TcpPrinterInput> {
 
     final String subnet = deviceIp!.substring(0, deviceIp.lastIndexOf('.'));
     // final List<String> ips = List.generate(255, (index) => '$subnet.$index');
+    try {
+      final stream = NetworkAnalyzer.discover2(subnet, defaultPort);
 
-    final stream = NetworkAnalyzer.discover2(subnet, defaultPort);
-
-    await for (var data in stream.map((message) => message)) {
-      if (data.exists) {
-        yield PrinterDevice(name: "${data.ip}:$defaultPort", address: data.ip);
+      await for (var data in stream.map((message) => message)) {
+        if (data.exists) {
+          yield PrinterDevice(name: "${data.ip}:$defaultPort", address: data.ip);
+        }
       }
-    }
+    } catch (e) {}
   }
 
   @override
@@ -99,7 +100,7 @@ class TcpPrinterConnector implements PrinterConnector<TcpPrinterInput> {
     try {
       // final _socket = await Socket.connect(_host, _port, timeout: _timeout);
       _socket?.add(Uint8List.fromList(bytes));
-      await Future.delayed(Duration(seconds: 1));
+      await Future.delayed(Duration(milliseconds: 100));
       // await _socket?.flush();
       // _socket?.destroy();
       return true;
@@ -111,6 +112,13 @@ class TcpPrinterConnector implements PrinterConnector<TcpPrinterInput> {
 
   @override
   Future<bool> connect(TcpPrinterInput model) async {
+    _socket = await Socket.connect(model.ipAddress, model.port, timeout: model.timeout);
+    debugPrint('socket connected'); //if opened you will get it here
+    listenSocket();
+    return true;
+  }
+
+  Future<bool> connectAndKeep(TcpPrinterInput model) async {
     try {
       if (status == TCPStatus.none) {
         _socket = await Socket.connect(model.ipAddress, model.port, timeout: model.timeout);
@@ -130,7 +138,7 @@ class TcpPrinterConnector implements PrinterConnector<TcpPrinterInput> {
             _statusStreamController.add(status);
           }
         });
-        listenSocket(ping);
+        listenSocket();
       }
       return true;
     } catch (e) {
@@ -144,20 +152,14 @@ class TcpPrinterConnector implements PrinterConnector<TcpPrinterInput> {
   /// [delayMs]: milliseconds to wait after destroying the socket
   @override
   Future<bool> disconnect({int? delayMs}) async {
-    try {
-      // await _socket?.flush();
-      _socket?.destroy();
-
-      if (delayMs != null) {
-        await Future.delayed(Duration(milliseconds: delayMs), () => null);
-      }
-      return true;
-    } catch (e) {
-      _socket?.destroy();
-      status = TCPStatus.none;
-      _statusStreamController.add(status);
-      return false;
+    // await _socket?.flush();
+    _socket?.destroy();
+    // status = TCPStatus.none;
+    // _statusStreamController.add(status);
+    if (delayMs != null) {
+      await Future.delayed(Duration(milliseconds: delayMs), () => null);
     }
+    return true;
   }
 
   /// Gets the current state of the TCP module
@@ -165,7 +167,7 @@ class TcpPrinterConnector implements PrinterConnector<TcpPrinterInput> {
     yield* _statusStream.cast<TCPStatus>();
   }
 
-  void listenSocket(Ping ping) {
+  void listenSocket() {
     _socket?.listen(
       (dynamic message) {
         debugPrint('message $message');
@@ -174,15 +176,15 @@ class TcpPrinterConnector implements PrinterConnector<TcpPrinterInput> {
         status = TCPStatus.none;
         debugPrint('socket closed'); //if closed you will get it here
         _socket?.destroy();
-        ping.stop();
-        _statusStreamController.add(status);
+        // ping.stop();
+        // _statusStreamController.add(status);
       },
       onError: (error) {
         status = TCPStatus.none;
         debugPrint('socket error $error');
         _socket?.destroy();
-        ping.stop();
-        _statusStreamController.add(status);
+        // ping.stop();
+        // _statusStreamController.add(status);
       },
     );
   }

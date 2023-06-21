@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'package:flutter_pos_printer_platform/flutter_pos_printer_platform.dart';
 import 'package:image/image.dart' as img;
 import 'package:dart_ping_ios/dart_ping_ios.dart';
 import 'image_utils.dart';
+// import 'package:gbk_codec/gbk_codec.dart';
 
 void main() {
   // Register DartPingIOS
@@ -35,10 +37,8 @@ class _MyAppState extends State<MyApp> {
   StreamSubscription<PrinterDevice>? _subscription;
   StreamSubscription<BTStatus>? _subscriptionBtStatus;
   StreamSubscription<USBStatus>? _subscriptionUsbStatus;
-  StreamSubscription<TCPStatus>? _subscriptionTCPStatus;
+
   BTStatus _currentStatus = BTStatus.none;
-  // ignore: unused_field
-  TCPStatus _currentTCPStatus = TCPStatus.none;
   // _currentUsbStatus is only supports on Android
   // ignore: unused_field
   USBStatus _currentUsbStatus = USBStatus.none;
@@ -95,12 +95,6 @@ class _MyAppState extends State<MyApp> {
         }
       }
     });
-
-    //  PrinterManager.instance.stateUSB is only supports on Android
-    _subscriptionTCPStatus = PrinterManager.instance.stateTCP.listen((status) {
-      log(' ----------------- status tcp $status ------------------ ');
-      _currentTCPStatus = status;
-    });
   }
 
   @override
@@ -108,7 +102,6 @@ class _MyAppState extends State<MyApp> {
     _subscription?.cancel();
     _subscriptionBtStatus?.cancel();
     _subscriptionUsbStatus?.cancel();
-    _subscriptionTCPStatus?.cancel();
     _portController.dispose();
     _ipController.dispose();
     super.dispose();
@@ -170,58 +163,62 @@ class _MyAppState extends State<MyApp> {
     List<int> bytes = [];
 
     // Xprinter XP-N160I
-    // final profile = await CapabilityProfile.load(name: 'XP-N160I');
+    final profile = await CapabilityProfile.load(name: 'XP-N160I');
     // default profile
-    final profile = await CapabilityProfile.load();
+    // final profile = await CapabilityProfile.load();
 
     // PaperSize.mm80 or PaperSize.mm58
-    final generator = Generator(PaperSize.mm58, profile);
-    // bytes += generator.setGlobalCodeTable('CP1252');
+    final generator = Generator(PaperSize.mm80, profile);
+    // bytes += generator.setGlobalCodeTable('CP1250');
     bytes += generator.text('Test Print', styles: const PosStyles(align: PosAlign.left));
     bytes += generator.text('Product 1');
     bytes += generator.text('Product 2');
+    // print accent
     bytes += generator.text('Comunicación', styles: const PosStyles(align: PosAlign.left, codeTable: 'CP1252'));
 
-    // bytes += generator.text('￥1,990', containsChinese: true, styles: const PosStyles(align: PosAlign.left));
-    // bytes += generator.emptyLines(1);
+    bytes += generator.emptyLines(1);
 
     // sum width total column must be 12
-    // bytes += generator.row([
-    //   PosColumn(width: 8, text: 'Lemon lime export quality per pound x 5 units', styles: const PosStyles(align: PosAlign.left)),
-    //   PosColumn(width: 4, text: 'USD 2.00', styles: const PosStyles(align: PosAlign.right)),
-    // ]);
+    bytes += generator.row([
+      PosColumn(width: 8, text: 'Lemon lime export quality per pound x 5 units', styles: const PosStyles(align: PosAlign.left)),
+      PosColumn(width: 4, text: 'USD 2.00', styles: const PosStyles(align: PosAlign.right)),
+    ]);
 
     final ByteData data = await rootBundle.load('assets/ic_launcher.png');
-    // if (data.lengthInBytes > 0) {
-    //   final Uint8List imageBytes = data.buffer.asUint8List();
-    //   // decode the bytes into an image
-    //   final decodedImage = img.decodeImage(imageBytes)!;
-    //   // Create a black bottom layer
-    //   // Resize the image to a 130x? thumbnail (maintaining the aspect ratio).
-    //   img.Image thumbnail = img.copyResize(decodedImage, height: 130);
-    //   // creates a copy of the original image with set dimensions
-    //   img.Image originalImg = img.copyResize(decodedImage, width: 380, height: 130);
-    //   // fills the original image with a white background
-    //   img.fill(originalImg, color: img.ColorRgb8(255, 255, 255));
-    //   var padding = (originalImg.width - thumbnail.width) / 2;
+    if (data.lengthInBytes > 0) {
+      final Uint8List imageBytes = data.buffer.asUint8List();
+      // decode the bytes into an image
+      final decodedImage = img.decodeImage(imageBytes)!;
+      // Create a black bottom layer
+      // Resize the image to a 130x? thumbnail (maintaining the aspect ratio).
+      img.Image thumbnail = img.copyResize(decodedImage, height: 130);
+      // creates a copy of the original image with set dimensions
+      img.Image originalImg = img.copyResize(decodedImage, width: 380, height: 130);
+      // fills the original image with a white background
+      img.fill(originalImg, color: img.ColorRgb8(255, 255, 255));
+      var padding = (originalImg.width - thumbnail.width) / 2;
 
-    //   //insert the image inside the frame and center it
-    //   drawImage(originalImg, thumbnail, dstX: padding.toInt());
+      //insert the image inside the frame and center it
+      drawImage(originalImg, thumbnail, dstX: padding.toInt());
 
-    //   // convert image to grayscale
-    //   var grayscaleImage = img.grayscale(originalImg);
+      // convert image to grayscale
+      var grayscaleImage = img.grayscale(originalImg);
 
-    //   bytes += generator.feed(1);
-    //   // bytes += generator.imageRaster(img.decodeImage(imageBytes)!, align: PosAlign.center);
-    //   bytes += generator.imageRaster(grayscaleImage, align: PosAlign.center);
-    //   bytes += generator.feed(1);
-    // }
+      bytes += generator.feed(1);
+      // bytes += generator.imageRaster(img.decodeImage(imageBytes)!, align: PosAlign.center);
+      bytes += generator.imageRaster(grayscaleImage, align: PosAlign.center);
+      bytes += generator.feed(1);
+    }
 
-    // // Chinese characters
-    // bytes += generator.row([
-    //   PosColumn(width: 8, text: '豚肉・木耳と玉子炒め弁当', styles: const PosStyles(align: PosAlign.left), containsChinese: true),
-    //   PosColumn(width: 4, text: '￥1,990', styles: const PosStyles(align: PosAlign.right), containsChinese: true),
-    // ]);
+    // PosCodeTable.westEur
+    bytes += generator.text('Special 1: àÀ èÈ éÉ ûÛ üÜ çÇ ôÔ', styles: const PosStyles(codeTable: 'CP1252'));
+    bytes += generator.text('Special 2: blåbærgrød', styles: const PosStyles(codeTable: 'CP1252'));
+    var esc = '\x1B';
+
+    // support arabic 22: arabic code page printer
+    bytes += Uint8List.fromList(List.from('${esc}t'.codeUnits)..add(22));
+    bytes += generator.textEncoded(Uint8List.fromList(utf8.encode('مرحبا بك')));
+
     _printEscPos(bytes, generator);
   }
 
@@ -267,6 +264,9 @@ class _MyAppState extends State<MyApp> {
       }
     } else {
       printerManager.send(type: bluetoothPrinter.typePrinter, bytes: bytes);
+      if (bluetoothPrinter.typePrinter == PrinterType.network) {
+        printerManager.disconnect(type: bluetoothPrinter.typePrinter);
+      }
     }
   }
 
