@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -168,15 +167,14 @@ class _MyAppState extends State<MyApp> {
     // final profile = await CapabilityProfile.load();
 
     // PaperSize.mm80 or PaperSize.mm58
-    final generator = Generator(PaperSize.mm80, profile);
+    final generator = Generator(PaperSize.mm58, profile);
     // bytes += generator.setGlobalCodeTable('CP1250');
     bytes += generator.text('Test Print', styles: const PosStyles(align: PosAlign.left));
     bytes += generator.text('Product 1');
     bytes += generator.text('Product 2');
     // print accent
     bytes += generator.text('Comunicación', styles: const PosStyles(align: PosAlign.left, codeTable: 'CP1252'));
-
-    bytes += generator.emptyLines(1);
+    // bytes += generator.emptyLines(1);
 
     // sum width total column must be 12
     bytes += generator.row([
@@ -210,14 +208,20 @@ class _MyAppState extends State<MyApp> {
       bytes += generator.feed(1);
     }
 
-    // PosCodeTable.westEur
-    bytes += generator.text('Special 1: àÀ èÈ éÉ ûÛ üÜ çÇ ôÔ', styles: const PosStyles(codeTable: 'CP1252'));
-    bytes += generator.text('Special 2: blåbærgrød', styles: const PosStyles(codeTable: 'CP1252'));
-    var esc = '\x1B';
+    // PosCodeTable.westEur or CP1252
+    // bytes += generator.text('Special 1: àÀ èÈ éÉ ûÛ üÜ çÇ ôÔ', styles: const PosStyles(codeTable: 'CP1252'));
+    // bytes += generator.text('Special 2: blåbærgrød', styles: const PosStyles(codeTable: 'CP1252'));
 
-    // support arabic 22: arabic code page printer
-    bytes += Uint8List.fromList(List.from('${esc}t'.codeUnits)..add(22));
-    bytes += generator.textEncoded(Uint8List.fromList(utf8.encode('مرحبا بك')));
+    // var esc = '\x1B';
+    // to support arabic must to know code page and the correct encode for example in some printers the code page is 22: arabic code page printer
+    // bytes += Uint8List.fromList(List.from('${esc}t'.codeUnits)..add(22));
+    // bytes += generator.textEncoded(Uint8List.fromList(utf8.encode('مرحبا بك')));
+
+    // Chinese characters
+    bytes += generator.row([
+      PosColumn(width: 8, text: '豚肉・木耳と玉子炒め弁当', styles: const PosStyles(align: PosAlign.left), containsChinese: true),
+      PosColumn(width: 4, text: '￥1,990', styles: const PosStyles(align: PosAlign.right), containsChinese: true),
+    ]);
 
     _printEscPos(bytes, generator);
   }
@@ -253,7 +257,7 @@ class _MyAppState extends State<MyApp> {
         bytes += generator.feed(2);
         bytes += generator.cut();
         connectedTCP = await printerManager.connect(type: bluetoothPrinter.typePrinter, model: TcpPrinterInput(ipAddress: bluetoothPrinter.address!));
-        if (!connectedTCP) print(' --- please review your connection ---');
+        if (!connectedTCP) debugPrint(' --- please review your connection ---');
         break;
       default:
     }
