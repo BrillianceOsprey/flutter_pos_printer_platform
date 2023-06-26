@@ -1,4 +1,4 @@
-package com.tiendana.sunmi.sunmi_printer;
+package com.sersoluciones.flutter_pos_printer_platform.bluetooth;
 
 import android.graphics.Bitmap;
 
