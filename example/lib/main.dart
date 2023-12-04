@@ -179,53 +179,92 @@ class _MyAppState extends State<MyApp> {
     // PaperSize.mm80 or PaperSize.mm58
     final generator = Generator(PaperSize.mm58, profile);
     // bytes += generator.setGlobalCodeTable('CP1250');
-    bytes += generator.text('Test Print',
-        styles: const PosStyles(align: PosAlign.left));
-    bytes += generator.text('Product 1'); // TODO:1 Cannot print myanmarfont
-    bytes += generator.text('Product 2');
+    // bytes += generator.text('MYANMAR DISTRIBUTION GROUP 01-400533, 01-400544',
+    //     styles: const PosStyles(align: PosAlign.left));
+    // bytes += generator.text('Invoice No: 001HR12312041527330001');
+    // bytes += generator.text('Order Date: 04-12-2023 03:28:32 PM');
+    // bytes += generator.text('Sale Order Type: Cash');
+    // bytes += generator.text('Sale Team: 001HR1 Salesman: TMWEHR1');
+    // bytes += generator.text('Customer: 146');
+    // bytes += generator.text('Customer Code: YGN-SOK-HR-000088');
+    // bytes += generator.text('Note:');
+    // bytes += generator.text('------------------------------------------------');
+    // bytes += generator.text('Product      Qty*UOM      Price     SubTotal(Ks)');
+    // bytes += generator.text('------------------------------------------------');
+
+    // bytes += generator.text('SKO-P-350mlgg      3*Bottle   Price     1,7555');
+    // bytes += generator.text('SKO-P-350ml      9*Can      Price     1,7555');
+    // bytes += generator.text('SKO-P-350ml      7*Can      Price     1,7555');
+    // bytes += generator.text('SKO-P-350ml      12*Can     Price     1,7555');
+    // bytes += generator.text('SKO-P-350ml      12*Can     Price     1,7555');
+    // bytes += generator.text('SKO-P-350ml      12*Can     Price     1,7555');
+    // bytes += generator.text('SKO-P-350ml      12*Can     Price     1,7555');
+
+    // bytes += generator.text('------------------------------------------------');
+    // bytes += generator.text('Total(Ks)                               23,145');
+    // bytes += generator.text('------------------------------------------------');
+
+    // bytes += generator.text('Cash                                    23,145');
+
+    // bytes += generator.text('------------------------------------------------');
+
+    // bytes += generator.text('Paid Amount(Ks)                         23,145');
+
+    // bytes += generator.text('------------------------------------------------');
+
+    // bytes += generator.text('');
+    // bytes += generator.text('');
+    // bytes += generator.text('');
+    // bytes += generator.text('');
+    // bytes += generator.text('');
+    // bytes += generator.text('Salesman Sign                    Customer Sign');
     // print accent
-    bytes += generator.text('Comunicación',
-        styles: const PosStyles(align: PosAlign.left, codeTable: 'CP1252'));
+    // bytes += generator.text('Comunicación',
+    //     styles: const PosStyles(align: PosAlign.left, codeTable: 'CP1252'));
     // bytes += generator.emptyLines(1);
 
     // sum width total column must be 12
     bytes += generator.row([
       PosColumn(
-          width: 8,
+          width: 4,
           text: 'Lemon lime export quality per pound x 5 units',
           styles: const PosStyles(align: PosAlign.left)),
       PosColumn(
-          width: 4,
-          text: 'USD 2.00',
-          styles: const PosStyles(align: PosAlign.right)),
+          width: 8,
+          text: 'Lemon lime export quality per pound x 5 units',
+          styles: const PosStyles(align: PosAlign.left)),
+      // PosColumn(
+      //     width: 4,
+      //     text: 'USD 2.00',
+      //     styles: const PosStyles(align: PosAlign.right)),
     ]);
 
-    final ByteData data = await rootBundle.load('assets/ic_launcher.png');
-    if (data.lengthInBytes > 0) {
-      final Uint8List imageBytes = data.buffer.asUint8List();
-      // decode the bytes into an image
-      final decodedImage = img.decodeImage(imageBytes)!;
-      // Create a black bottom layer
-      // Resize the image to a 130x? thumbnail (maintaining the aspect ratio).
-      img.Image thumbnail = img.copyResize(decodedImage, height: 130);
-      // creates a copy of the original image with set dimensions
-      img.Image originalImg =
-          img.copyResize(decodedImage, width: 380, height: 130);
-      // fills the original image with a white background
-      img.fill(originalImg, color: img.ColorRgb8(255, 255, 255));
-      var padding = (originalImg.width - thumbnail.width) / 2;
+    // final ByteData data = await rootBundle.load('assets/ic_launcher.png');
+    // if (data.lengthInBytes > 0) {
+    //   final Uint8List imageBytes = data.buffer.asUint8List();
+    //   // decode the bytes into an image
+    //   final decodedImage = img.decodeImage(imageBytes)!;
+    //   // Create a black bottom layer
+    //   // Resize the image to a 130x? thumbnail (maintaining the aspect ratio).
+    //   img.Image thumbnail = img.copyResize(decodedImage, height: 130);
+    //   // creates a copy of the original image with set dimensions
+    //   img.Image originalImg =
+    //       img.copyResize(decodedImage, width: 380, height: 130);
+    //   // fills the original image with a white background
+    //   img.fill(originalImg, color: img.ColorRgb8(255, 255, 255));
+    //   var padding = (originalImg.width - thumbnail.width) / 2;
 
-      //insert the image inside the frame and center it
-      drawImage(originalImg, thumbnail, dstX: padding.toInt());
+    //   //insert the image inside the frame and center it
+    //   drawImage(originalImg, thumbnail, dstX: padding.toInt());
 
-      // convert image to grayscale
-      var grayscaleImage = img.grayscale(originalImg);
+    //   // convert image to grayscale
+    //   var grayscaleImage = img.grayscale(originalImg);
 
-      bytes += generator.feed(1);
-      // bytes += generator.imageRaster(img.decodeImage(imageBytes)!, align: PosAlign.center);
-      bytes += generator.imageRaster(grayscaleImage, align: PosAlign.center);
-      bytes += generator.feed(1);
-    }
+    //   bytes += generator.feed(1);
+    //   // bytes += generator.imageRaster(img.decodeImage(imageBytes)!, align: PosAlign.center);
+    //   bytes += generator.imageRaster(grayscaleImage, align: PosAlign.center);
+    //   bytes += generator.feed(1);
+    // }
 
     // PosCodeTable.westEur or CP1252
     // bytes += generator.text('Special 1: àÀ èÈ éÉ ûÛ üÜ çÇ ôÔ', styles: const PosStyles(codeTable: 'CP1252'));
@@ -237,18 +276,18 @@ class _MyAppState extends State<MyApp> {
     // bytes += generator.textEncoded(Uint8List.fromList(utf8.encode('مرحبا بك')));
 
     // Chinese characters
-    bytes += generator.row([
-      PosColumn(
-          width: 8,
-          text: '豚肉・木耳と玉子炒め弁当',
-          styles: const PosStyles(align: PosAlign.left),
-          containsChinese: true),
-      PosColumn(
-          width: 4,
-          text: '￥1,990',
-          styles: const PosStyles(align: PosAlign.right),
-          containsChinese: true),
-    ]);
+    // bytes += generator.row([
+    //   PosColumn(
+    //       width: 8,
+    //       text: '豚肉・木耳と玉子炒め弁当',
+    //       styles: const PosStyles(align: PosAlign.left),
+    //       containsChinese: true),
+    //   PosColumn(
+    //       width: 4,
+    //       text: '￥1,990',
+    //       styles: const PosStyles(align: PosAlign.right),
+    //       containsChinese: true),
+    // ]);
 
     _printEscPos(bytes, generator);
   }
@@ -379,9 +418,10 @@ class _MyAppState extends State<MyApp> {
                             onPressed: selectedPrinter == null || !_isConnected
                                 ? null
                                 : () {
-                                    if (selectedPrinter != null)
+                                    if (selectedPrinter != null) {
                                       printerManager.disconnect(
                                           type: selectedPrinter!.typePrinter);
+                                    }
                                     setState(() {
                                       _isConnected = false;
                                     });
@@ -580,8 +620,9 @@ class _MyAppState extends State<MyApp> {
                       padding: const EdgeInsets.only(top: 10.0),
                       child: OutlinedButton(
                         onPressed: () async {
-                          if (_ipController.text.isNotEmpty)
+                          if (_ipController.text.isNotEmpty) {
                             setIpAddress(_ipController.text);
+                          }
                           _printReceiveTest();
                         },
                         child: const Padding(
